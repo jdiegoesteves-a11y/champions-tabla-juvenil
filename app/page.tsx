@@ -244,8 +244,8 @@ export default function Dashboard() {
              {/* LOGO COPOL: Visible en los 3 pasos de selección inicial */}
              <div style={logoBottomContainer}>
                <img 
-                 src="Champions-juvenil.png" 
-                 alt="Champions-Juvenil Logo" 
+                 src="champions-juvenil.png" 
+                 alt="champions-Juvenil Logo" 
                  style={logoBottomStyle} 
                />
              </div>
