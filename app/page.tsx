@@ -15,8 +15,8 @@ interface IGoleador { nombre: string; goles: number; }
 /**
  * COMPONENTE VISTA DEPORTIVA (TABLAS Y CALENDARIO)
  */
-function VistaDeportiva({ genero, deporte, categoria, onBack }: { 
-  genero: string; deporte: string; categoria: string; onBack: () => void 
+function VistaDeportiva({ categoria, onBack }: { 
+  categoria: string; onBack: () => void 
 }) {
   const [tabla, setTabla] = useState<IEquipo[]>([]);
   const [calendario, setCalendario] = useState<IPartido[]>([]);
@@ -28,8 +28,9 @@ function VistaDeportiva({ genero, deporte, categoria, onBack }: {
   useEffect(() => {
     setLoading(true);
     const qEquipos = collection(db, "equipos");
-    const qPartidos = query(collection(db, "partidos"), where("genero", "==", genero), where("deporte", "==", deporte), where("categoria", "==", categoria));
-    const qCal = query(collection(db, "calendario"), where("genero", "==", genero), where("deporte", "==", deporte), where("categoria", "==", categoria), orderBy("fecha", "asc"));
+    // Filtramos solo por categoría
+    const qPartidos = query(collection(db, "partidos"), where("categoria", "==", categoria));
+    const qCal = query(collection(db, "calendario"), where("categoria", "==", categoria), orderBy("fecha", "asc"));
 
     let equiposData: any[] = [];
     let partidosData: IPartido[] = [];
@@ -49,13 +50,14 @@ function VistaDeportiva({ genero, deporte, categoria, onBack }: {
     const unsubC = onSnapshot(qCal, (s) => setCalendario(s.docs.map(d => ({ id: d.id, ...d.data() } as IPartido))));
 
     return () => { unsubE(); unsubP(); unsubC(); };
-  }, [genero, deporte, categoria]);
+  }, [categoria]);
 
   const calcularEstadisticas = (eqs: any[], pts: IPartido[]) => {
     const tablaTemp: Record<string, IEquipo> = {};
     const contGoles: Record<string, number> = {};
 
-    eqs.filter(e => e.deporte === deporte && e.genero === genero && e.categoria === categoria)
+    // Filtro simplificado solo por categoría
+    eqs.filter(e => e.categoria === categoria)
        .forEach(e => tablaTemp[e.nombre] = { nombre: e.nombre, puntos: 0, pj: 0, gf: 0, gc: 0, dg: 0 });
 
     pts.forEach(p => {
@@ -126,15 +128,15 @@ function VistaDeportiva({ genero, deporte, categoria, onBack }: {
           <span style={liveBadge}>📅 CALENDARIO DE JUEGOS</span>
         </div>
         
-        {calendario.length > 0 ? (
+        {calendario.length > 0 ? ( 
           <>
-            <div style={{ borderBottom: calendario.length > 1 ? '1px solid #334155' : 'none', paddingBottom: calendario.length > 1 ? '20px' : '0', marginBottom: '15px' }}>
+            <div style={{ borderBottom: calendario.length > 1 ? '1px solid #b69c9c' : 'none', paddingBottom: calendario.length > 1 ? '20px' : '0', marginBottom: '15px' }}>
                <div style={{...matchDisplay, gap: '40px'}}>
                  <span style={{...teamMain, fontSize: '1.8rem'}}>{calendario[0].local}</span>
                  <span style={{...vsCircle, width: '50px', height: '50px'}}>VS</span>
                  <span style={{...teamMain, fontSize: '1.8rem'}}>{calendario[0].visitante}</span>
                </div>
-               <p style={{...timeTag, fontSize: '1.1rem', fontWeight: 'bold', color: '#fb2424'}}>📅 {calendario[0].fecha} • 🕒 {calendario[0].hora}</p>
+               <p style={{...timeTag, fontSize: '1.1rem', fontWeight: 'bold', color: '#a88c8c'}}>📅 {calendario[0].fecha} • 🕒 {calendario[0].hora}</p>
             </div>
 
             {calendario.length > 1 && (
@@ -182,7 +184,7 @@ function VistaDeportiva({ genero, deporte, categoria, onBack }: {
                           <td style={tdS}>{e.gf}</td>
                           <td style={tdS}>{e.gc}</td>
                           <td style={tdS}>{e.dg}</td>
-                          <td style={{...tdS, color: '#fb2424', fontWeight: '900'}}>{e.puntos}</td>
+                          <td style={{...tdS, color: '#b69b9b', fontWeight: '900'}}>{e.puntos}</td>
                        </tr>
                     ))}
                  </tbody>
@@ -212,7 +214,7 @@ function VistaDeportiva({ genero, deporte, categoria, onBack }: {
  */
 export default function Dashboard() {
   const [step, setStep] = useState(1);
-  const [sel, setSel] = useState({ genero: "", deporte: "", categoria: "" });
+  const [categoria, setCategoria] = useState("");
 
   return (
     <div style={mainContainer}>
@@ -222,26 +224,17 @@ export default function Dashboard() {
       </nav>
 
       <main style={{maxWidth: '1200px', margin: '0 auto', padding: '30px 20px'}}>
-        {step > 1 && step < 4 && (
-          <button onClick={() => setStep(step - 1)} style={backButtonStyle}>← Volver atrás</button>
-        )}
-
-        {[
-         { title: "GÉNERO", key: "genero", opts: ["Varones", "Damas"] },
-          { title: "DEPORTE", key: "deporte", opts: ["Futbol", "Volley", "Basket"] },
-          { title: "CATEGORÍA", key: "categoria", opts: ["Inferior", "Intermedia", "Superior"] }
-        ].map((s, idx) => step === idx + 1 && (
-           <div key={s.key} style={selectionContainer}>
-             <h1 style={selectionTitle}>Selecciona {s.title}</h1>
+        {step === 1 && (
+           <div style={selectionContainer}>
+             <h1 style={selectionTitle}>Selecciona CATEGORÍA</h1>
              <div style={gridButtons}>
-               {s.opts.map(opt => (
-                 <button key={opt} style={modernBtn} onClick={() => {setSel({...sel, [s.key]: opt}); setStep(idx + 2);}}>
+               {["2006", "2007", "2008"].map(opt => (
+                 <button key={opt} style={modernBtn} onClick={() => {setCategoria(opt); setStep(2);}}>
                    {opt}
                  </button>
                ))}
              </div>
 
-             {/* LOGO COPOL: Visible en los 3 pasos de selección inicial */}
              <div style={logoBottomContainer}>
                <img 
                  src="champions-juvenil.png" 
@@ -250,18 +243,18 @@ export default function Dashboard() {
                />
              </div>
            </div>
-        ))}
+        )}
 
-        {step === 4 && (
+        {step === 2 && (
           <div>
             <div style={infoBar}>
                <div style={breadcrumbStyle}>
-                 <button onClick={() => setStep(3)} style={backArrowStyle}>← Volver</button>
-                 <span>{sel.deporte} • {sel.genero} • {sel.categoria}</span>
+                 <button onClick={() => setStep(1)} style={backArrowStyle}>← Volver</button>
+                 <span>Categoría: {categoria}</span>
                </div>
                <button onClick={() => setStep(1)} style={resetBtn}>REINICIAR FILTRO</button>
             </div>
-            <VistaDeportiva {...sel} onBack={() => setStep(3)} />
+            <VistaDeportiva categoria={categoria} onBack={() => setStep(1)} />
           </div>
         )}
       </main>
@@ -269,53 +262,44 @@ export default function Dashboard() {
   );
 }
 
-// --- ESTILOS ---
-const mainContainer = { backgroundColor: '#0b1120', minHeight: '100vh', color: '#f8fafc', fontFamily: '"Inter", sans-serif', paddingBottom: '50px' };
+// --- ESTILOS (Sin cambios) ---
+const mainContainer = { backgroundColor: '#8b0d0d', minHeight: '100vh', color: '#f8fafc', fontFamily: '"Inter", sans-serif', paddingBottom: '50px' };
 const navBar = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '25px 50px', backgroundColor: '#0f172a', borderBottom: '1px solid #1e293b' };
 const logo = { fontSize: '2rem', fontWeight: '900', letterSpacing: '-1px' };
-const adminCircle = { background: '#1e293b', border: '1px solid #334155', color: '#fff', cursor: 'pointer', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', justifyContent: 'center', alignItems: 'center' };
-
+const adminCircle = { background: '#1e293b', border: '1px solid #e8eaec', color: '#fff', cursor: 'pointer', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', justifyContent: 'center', alignItems: 'center' };
 const selectionContainer = { textAlign: 'center' as const, marginTop: '8vh' };
 const selectionTitle = { color: '#f8fafc', fontSize: '2rem', fontWeight: '600', marginBottom: '40px' };
 const gridButtons = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '30px', maxWidth: '900px', margin: '0 auto' };
-const modernBtn = { padding: '40px 20px', borderRadius: '24px', background: '#1e293b', color: '#f8fafc', border: '1px solid #334155', cursor: 'pointer', fontSize: '1.4rem', fontWeight: 'bold', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)' };
-
-// ESTILOS DEL LOGO COPOL
+const modernBtn = { padding: '40px 20px', borderRadius: '24px', background: '#ffffff', color: '#0a0a0a', border: '1px solid #334155', cursor: 'pointer', fontSize: '1.4rem', fontWeight: 'bold', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)' };
 const logoBottomContainer = { marginTop: '50px', display: 'flex', justifyContent: 'center', width: '100%' };
 const logoBottomStyle = { width: '180px', height: 'auto', opacity: 0.9 };
-
 const highlightCard = { background: '#1e293b', padding: '40px 20px', borderRadius: '24px', border: '1px solid #334155', marginBottom: '10px' };
 const cardStyle = { backgroundColor: '#1e293b', borderRadius: '24px', padding: '30px', border: '1px solid #334155' };
 const cardHeader = { marginBottom: '25px', fontSize: '1rem', color: '#cbd5e1', fontWeight: '700', letterSpacing: '1px' };
 const gridContainer = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '30px' };
-const liveBadge = { fontSize: '0.8rem', background: '#fb2424', color: '#0b1120', padding: '5px 12px', borderRadius: '20px', fontWeight: 'bold' };
+const liveBadge = { fontSize: '0.8rem', background: '#bdabab', color: '#ffffff', padding: '5px 12px', borderRadius: '20px', fontWeight: 'bold' };
 const matchDisplay = { display: 'flex', justifyContent: 'center', gap: '40px', alignItems: 'center', marginTop: '20px' };
-const vsCircle = { border: '2px solid #fb2424', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fb2424', fontWeight: 'bold' };
+const vsCircle = { border: '2px solid #b19494', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#baa6a6', fontWeight: 'bold' };
 const teamMain = { width: '35%', textAlign: 'center' as const, fontWeight: '800' };
 const timeTag = { textAlign: 'center' as const, color: '#94a3b8', marginTop: '20px' };
-
 const tableStyle = { width: '100%', borderCollapse: 'collapse' as const };
 const thS = { padding: '15px 10px', fontSize: '0.8rem', color: '#64748b', textAlign: 'center' as const };
 const thSClub = { ...thS, textAlign: 'left' as const };
 const tdS = { padding: '18px 10px', fontSize: '1rem', textAlign: 'center' as const };
 const tdSClub = { ...tdS, textAlign: 'left' as const, fontWeight: '600', color: '#60a5fa' };
-const rowStyle = { borderBottom: '1px solid #334155', cursor: 'pointer' };
-
+const rowStyle = { borderBottom: '1px solid #343355', cursor: 'pointer' };
 const scorerRow = { display: 'flex', padding: '15px 20px', background: '#0f172a', borderRadius: '16px', marginBottom: '10px', alignItems: 'center' };
 const rankNumber = { color: '#64748b', fontWeight: 'bold', width: '30px' };
 const scorerName = { flex: 1, fontSize: '1.1rem' };
 const scoreBadge = { background: '#334155', padding: '5px 15px', borderRadius: '10px', fontWeight: 'bold' };
-
 const infoBar = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' };
 const breadcrumbStyle = { display: 'flex', alignItems: 'center', gap: '15px', color: '#94a3b8' };
 const backArrowStyle = { background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer' };
-const resetBtn = { background: 'none', border: 'none', color: '#fb2424', cursor: 'pointer', fontWeight: 'bold' };
-const backButtonStyle = { background: '#1e293b', border: '1px solid #334155', color: '#f8fafc', padding: '12px 25px', borderRadius: '12px', cursor: 'pointer', marginBottom: '30px' };
-const loaderStyle = { padding: '100px', textAlign: 'center' as const, color: '#fb2424', fontWeight: 'bold' };
-
+const resetBtn = { background: 'none', border: 'none', color: '#b09898', cursor: 'pointer', fontWeight: 'bold' };
+const loaderStyle = { padding: '100px', textAlign: 'center' as const, color: '#aa9292', fontWeight: 'bold' };
 const modalOverlayStyle = { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(11, 17, 32, 0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, backdropFilter: 'blur(5px)' };
 const modalContentStyle = { backgroundColor: '#1e293b', borderRadius: '24px', padding: '40px', width: '95%', maxWidth: '550px', border: '1px solid #334155' };
 const modalHeaderStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: '20px' };
 const closeBtnStyle = { background: '#334155', border: 'none', color: '#fff', borderRadius: '50%', width: '35px', height: '35px', cursor: 'pointer' };
 const historyMatchStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', borderBottom: '1px solid #334155' };
-const historyScoreStyle = { background: '#0f172a', padding: '8px 20px', borderRadius: '12px', fontWeight: '900', color: '#fb2424' };
+const historyScoreStyle = { background: '#0f172a', padding: '8px 20px', borderRadius: '12px', fontWeight: '900', color: '#af9494' };
